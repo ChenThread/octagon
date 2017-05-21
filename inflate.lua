@@ -115,14 +115,25 @@ function inflate.inflate(data)
 	local btype
 
 	local decoders = {}
-	decoders[0+1] = function()
-		pos = (pos+7)&~7
-		local len, nlen = string.unpack("<2I <2I", data:sub(pos, pos+4-1))
-		if len ~ nlen ~= 0xFFFF then error("stored block complement check failed") end
-		error("TODO: stored deflate block")
-	end
 	decoders[1+1] = function()
-		error("TODO: fixed huffman deflate block")
+		local i
+
+		-- literals
+		local hltab = {}
+		for i=0,143 do hltab[i+1] = 8 end
+		for i=144,255 do hltab[i+1] = 9 end
+		for i=256,279 do hltab[i+1] = 7 end
+		for i=280,287 do hltab[i+1] = 8 end
+
+		-- distances
+		local hdtab = {}
+		for i=0,32-1 do hdtab[i+1] = 5 end
+
+		-- build and return
+		local hltree = buildhuff(hltab, 288)
+		local hdtree = buildhuff(hdtab, 32)
+
+		return hltree, hdtree
 	end
 	decoders[2+1] = function()
 		local i, j
@@ -249,35 +260,49 @@ function inflate.inflate(data)
 		if btype == 3 then error("invalid block mode") end
 		if sysnative then print("block", btype, bfinal) end
 
-		local tfetch, tgetdist = decoders[btype+1]()
+		if btype == 0 then
+			pos = (pos + 7) & (~7)
+			local lpos = pos >> 3
+			local len = data:byte(lpos+1)
+			len = len + (data:byte(lpos+2) << 8)
+			local nlen = data:byte(lpos+3)
+			nlen = nlen + (data:byte(lpos+4) << 8)
+			if (len ^ nlen) ~= 0xFFFF then
+				error("stored block complement check failed")
+			end
+			ret = data:sub(lpos+4+1, lpos+4+1+len-1)
+			assert(#ret == len)
+			pos = pos + ((4+len)<<3)
+		else
+			local tfetch, tgetdist = decoders[btype+1]()
 
-		while true do
-			local v = tfetch()
-			if v <= 255 then
-				ret = ret .. string.char(v)
-			elseif v == 256 then
-				break
-			elseif v >= 257 and v <= 264 then
-				lzss(v-257 + 3, tgetdist())
-			elseif v >= 265 and v <= 268 then
-				lzss((v-265)*2 + 11 + get(1), tgetdist())
-			elseif v >= 269 and v <= 272 then
-				lzss((v-269)*4 + 19 + get(2), tgetdist())
-			elseif v >= 273 and v <= 276 then
-				lzss((v-273)*8 + 35 + get(3), tgetdist())
-			elseif v >= 277 and v <= 280 then
-				lzss((v-277)*16 + 67 + get(4), tgetdist())
-			elseif v >= 281 and v <= 284 then
-				lzss((v-281)*32 + 131 + get(5), tgetdist())
-			elseif v >= 285 then
-				lzss(258, tgetdist())
-			else
-				print(v)
-				error("invalid deflate literal table code")
+			while true do
+				local v = tfetch()
+				if v <= 255 then
+					ret = ret .. string.char(v)
+				elseif v == 256 then
+					break
+				elseif v >= 257 and v <= 264 then
+					lzss(v-257 + 3, tgetdist())
+				elseif v >= 265 and v <= 268 then
+					lzss((v-265)*2 + 11 + get(1), tgetdist())
+				elseif v >= 269 and v <= 272 then
+					lzss((v-269)*4 + 19 + get(2), tgetdist())
+				elseif v >= 273 and v <= 276 then
+					lzss((v-273)*8 + 35 + get(3), tgetdist())
+				elseif v >= 277 and v <= 280 then
+					lzss((v-277)*16 + 67 + get(4), tgetdist())
+				elseif v >= 281 and v <= 284 then
+					lzss((v-281)*32 + 131 + get(5), tgetdist())
+				elseif v >= 285 then
+					lzss(258, tgetdist())
+				else
+					print(v)
+					error("invalid deflate literal table code")
+				end
 			end
 		end
 
-		--error("TODO!")
 		retcomb = retcomb .. ret
 		if not sysnative then os.sleep(0) end
 	end
