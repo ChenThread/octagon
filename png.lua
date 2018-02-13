@@ -49,6 +49,7 @@ local png_compr, png_filt, png_inter
 local png_ccount
 local png_fstride
 local png_bwidth
+local png_trns = {}
 
 local idat_accum = ""
 while true do
@@ -109,9 +110,27 @@ while true do
 		local i
 		for i=0,#cdat//3-1 do
 			PALETTE[i+1] = (0
-				+ (cdat:byte(3*i+1)<<16)
-				+ (cdat:byte(3*i+2)<<8)
-				+ (cdat:byte(3*i+3)))
+				+ (cdat:byte(3*i+1,3*i+1)<<16)
+				+ (cdat:byte(3*i+2,3*i+2)<<8)
+				+ (cdat:byte(3*i+3,3*i+3)))
+		end
+
+	elseif ctyp == "tRNS" then
+		if png_cm == 3 then
+			-- indexed + transparency
+			for i=0,#cdat do
+				local c = cdat:byte(i+1,i+1)
+				table.insert(png_trns, c)
+			end
+		elseif png_cm == 2 and png_bpc == 8 then
+			-- rgb + transparency
+			for i=0,#cdat//3-1 do
+				png_trns[(cdat:byte(3*i+1,3*i+1)<<16)
+					+ (cdat:byte(3*i+2,3*i+2)<<8)
+					+ (cdat:byte(3*i+3,3*i+3))] = true
+			end
+		else
+			error(string.format("TODO: support this tRNS colour mode setup: cm=%d bpc=%d", png_cm, png_bpc))
 		end
 
 	elseif ctyp == "IDAT" then
@@ -229,7 +248,17 @@ gpu.setBackground(0x000000)
 gpu.setForeground(0xFFFFFF)
 term.clear()
 local getter
-local getalpha = function(self, x, y) return 255 end
+local getalpha = function(self, x, y)
+	local v = png_trns[getter(self, x, y)]
+	if png_trns[v] then return 0 else return 255 end
+end
+
+if png_cm == 3 then
+	getalpha = function(self, x, y)
+		local pidx = getter(self, x, y, true)
+		return png_trns[pidx] or 255
+	end
+end
 
 if png_cm == 3 and png_bpc == 8 then
 	getter = function(self, x, y, paletted)
