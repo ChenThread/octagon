@@ -25,8 +25,15 @@ Keep in mind palette colors are 1-indexed here, so a 16-color image has palette 
 It's a bit incomplete, so please get in touch if your PNGs depend on the following:
 
 * grayscale images (not otherwise indexed or RGB)
-* monochrome images
 * 16bpc images (that is, 48/64bpp)
+
+Additionally, please get in touch if you need the following features:
+
+* sPLT and hIST chunks (for viewer palette adjustment, I assume, does anyone use/provide these though?)
+
+Currently out of scope:
+
+* any gamma/colorspace adjustments at all
 
 **oczip.lua**: ZIP decompression. Depends on crc32.lua and inflate.lua.
 
