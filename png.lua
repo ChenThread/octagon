@@ -1,6 +1,6 @@
 --[[
 ocpng: show a png in opencomputers
-Copyright (c) 2015-17 asie, GreaseMonkey
+Copyright (c) 2015, 2016, 2017, 2018 asie, GreaseMonkey
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of
 this software and associated documentation files (the "Software"), to deal in
