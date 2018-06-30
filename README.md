@@ -35,6 +35,11 @@ Currently out of scope:
 
 * any gamma/colorspace adjustments at all
 
+**pngview.lua**: Simple high-resolution PNG viewer. Depends on png.lua.
+
+Load with a .PNG file as argument to display it. Code includes rudimentary "API", but has to be
+adapted to properly expose it.
+
 **oczip.lua**: ZIP decompression. Depends on crc32.lua and inflate.lua.
 
 Currently, it only works as a program and not as a library. "oczip [filename]" with a hardcoded output path "results/".
